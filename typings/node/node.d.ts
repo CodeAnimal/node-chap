@@ -1106,7 +1106,8 @@ declare module "crypto" {
     export function createCipher(algorithm: string, password: any): Cipher;
     export function createCipheriv(algorithm: string, key: any, iv: any): Cipher;
     interface Cipher {
-        update(data: any, input_encoding?: string, output_encoding?: string): string;
+        update(data: any, input_encoding: string, output_encoding: string): string;
+        update(data: any, input_encoding?: string): Buffer;
         final(output_encoding: string): string;
         final(): Buffer;
         setAutoPadding(auto_padding: boolean): void;
