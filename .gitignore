@@ -39,3 +39,4 @@ typings
 # Typescript compiled stuff
 
 lib/*.map
+lib/*.d.ts
