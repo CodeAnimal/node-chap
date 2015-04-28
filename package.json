@@ -1,0 +1,19 @@
+{
+  "name": "node-chap",
+  "version": "0.0.2",
+  "description": "Basic CHAP, MS-CHAP and MS-CHAPv2 authentication methods.",
+  "main": "./lib/chap",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "chap",
+    "mschap",
+    "ms-chap",
+    "mschapv2",
+    "ms-chapv2",
+    "ms-chap2",
+    "mschap2"
+  ],
+  "author": "Peter Harris <codeanimal@outlook.com>"
+}

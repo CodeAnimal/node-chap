@@ -1,0 +1,9 @@
+node_modules
+obj
+typings
+
+lib/*.map
+*.dat
+
+*.sln
+*.njsproj
