@@ -6,9 +6,9 @@ module chap {
 
   export class CHAP {
     // See http://tools.ietf.org/html/rfc1994#section-2 and https://tools.ietf.org/html/rfc2865#section-7.2
-    static ChallengeResponse(id: number, password: string, challenge: Buffer): Buffer {
+    static ChallengeResponse(id: Buffer, password: string, challenge: Buffer): Buffer {
       var md5 = crypto.createHash("md5");
-      md5.update(id);
+      md5.update(id.slice(0, 1)); // Take only the first octet as the CHAP ID.
       md5.update(password);
       md5.update(challenge);
       return md5.digest();
@@ -95,7 +95,7 @@ module chap {
      * @param username                Username max length is 256 ASCII characters.
      * @returns {string}              The authenticator response as "S=" followed by 40 hexadecimal digits.
      */
-    static generateAuthenticatorResponse(password: string, NT_response: Buffer, peer_challenge: Buffer, authenticator_challenge: Buffer, username: string): string {
+    static GenerateAuthenticatorResponse(password: string, NT_response: Buffer, peer_challenge: Buffer, authenticator_challenge: Buffer, username: string): string {
       password = password || "";
       username = username || "";
       if (NT_response.length !== 24 || peer_challenge.length !== 16 || authenticator_challenge.length !== 16) return null;

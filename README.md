@@ -6,7 +6,7 @@ node-chap creates CHAP, MS-CHAPv1 and MS-CHAPv2 challenge-responses, which can b
 
 ### CHAP
 
-#### ChallengeResponse(id: number, password: string, challenge: Buffer)
+#### ChallengeResponse(id: Buffer, password: string, challenge: Buffer)
 
 Returns a Buffer 16 octets long.
 
@@ -29,7 +29,7 @@ This will return a buffer 24 octets long.
 
 ### MSCHAPv2
 
-#### generateAuthenticatorResponse(password: string, NT_response: Buffer, peer_challenge: Buffer, authenticator_challenge: Buffer, username: string)
+#### GenerateAuthenticatorResponse(password: string, NT_response: Buffer, peer_challenge: Buffer, authenticator_challenge: Buffer, username: string)
 
 This will generate an authenticator response, returning a 42 character string, starting with "S=" followed by 40 hexadecimal characters, in upper case.
 
