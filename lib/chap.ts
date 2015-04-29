@@ -62,7 +62,7 @@ module chap {
 
       res1.copy(resBuffer, 0);
       res2.copy(resBuffer, 8);
-      res2.copy(resBuffer, 16);
+      res3.copy(resBuffer, 16);
 
       return resBuffer;
     }
@@ -72,10 +72,7 @@ module chap {
     }
 
     static DesEncrypt(clear: Buffer, key: Buffer): Buffer {
-      var iv = new Buffer(8);
-      iv.fill(0);
-
-      var des = crypto.createCipheriv("des", this._ParityKey(key), iv);
+      var des = crypto.createCipheriv("des-ecb", this._ParityKey(key), new Buffer(0));
       des.setAutoPadding(false);
 
       return Buffer.concat([des.update(clear), des.final()]);
