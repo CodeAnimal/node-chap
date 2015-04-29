@@ -21,11 +21,10 @@ module chap {
     static LmChallengeResponse(challenge: Buffer, password: string): Buffer {
       var ucasePassword = password.toUpperCase();
 
-      ucasePassword = ucasePassword;
-
       var passwordBuffer = new Buffer(ucasePassword); // This should be OEM, but maybe utf8/unicode will do?
       var finalPasswordBuffer = new Buffer(14);
 
+      finalPasswordBuffer.fill(0);
       passwordBuffer.copy(finalPasswordBuffer);
 
       var passwordHash1 = this.DesHash(passwordBuffer.slice(0, 7));
@@ -67,8 +66,8 @@ module chap {
       return resBuffer;
     }
 
-    private static DesHash(clear: Buffer): Buffer {
-      return this.DesEncrypt(clear, new Buffer("KGS!@#$ %"));
+    private static DesHash(key: Buffer): Buffer {
+      return this.DesEncrypt(new Buffer("KGS!@#$%", "ascii"), key);
     }
 
     static DesEncrypt(clear: Buffer, key: Buffer): Buffer {
@@ -152,10 +151,10 @@ module chap {
       sha1.update(passwordDigest);
       sha1.update(challenge);
       sha1.update(Magic2);
-      var authenticatorResponse = sha1.digest("hex");
+      var authenticatorResponse: string = sha1.digest("hex");
 
 
-      return "S=" + authenticatorResponse;
+      return "S=" + authenticatorResponse.toUpperCase();
     }
   }
 }

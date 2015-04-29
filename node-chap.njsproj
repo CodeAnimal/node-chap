@@ -24,11 +24,18 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="lib" />
+    <Folder Include="tests\" />
     <Folder Include="typings\" />
+    <Folder Include="typings\mocha\" />
     <Folder Include="typings\node\" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="lib\chap.ts" />
+    <TypeScriptCompile Include="tests\chap.test.ts">
+      <SubType>Code</SubType>
+      <TestFramework>Mocha</TestFramework>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="typings\mocha\mocha.d.ts" />
     <TypeScriptCompile Include="typings\node\node.d.ts" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
