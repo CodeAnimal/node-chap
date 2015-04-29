@@ -62,9 +62,9 @@ module chap {
       var res2 = des2.update(challenge);
       var res3 = des3.update(challenge);
 
-      res1 = SlowBuffer.concat([res1, des1.final()]);
-      res2 = SlowBuffer.concat([res2, des2.final()]);
-      res3 = SlowBuffer.concat([res3, des3.final()]);
+      res1 = Buffer.concat([res1, des1.final()]);
+      res2 = Buffer.concat([res2, des2.final()]);
+      res3 = Buffer.concat([res3, des3.final()]);
 
       var resBuffer = new Buffer(24);
 
@@ -78,7 +78,7 @@ module chap {
     private static DesHash(clear: Buffer): Buffer {
       var des = crypto.createCipher("des", clear);
       var retBuf = des.update("KGS!@#$%");
-      return SlowBuffer.concat([retBuf, des.final()]);
+      return Buffer.concat([retBuf, des.final()]);
     }
   }
 
