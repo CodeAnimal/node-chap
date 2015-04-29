@@ -99,6 +99,33 @@ module chap {
   export class MSCHAPv2 {
     // See http://tools.ietf.org/html/rfc2759#section-8.7
 
+
+    static GenerateNTResponse(authChallenge: Buffer, peerChallenge: Buffer, username: string, password: string): Buffer {
+      var passwordBuffer = new Buffer(password, "utf16le");
+
+      var challenge = this.ChallengeHash(peerChallenge, authChallenge, username);
+
+      var md4 = crypto.createHash("md4");
+      md4.update(passwordBuffer);
+      var passwordHash = md4.digest();
+
+      return this.ChallengeResponse(challenge, passwordHash);
+    }
+
+    static ChallengeHash(peerChallenge: Buffer, authChallenge: Buffer, username: string): Buffer {
+      var sha1 = crypto.createHash("sha1");
+
+      sha1.update(peerChallenge);
+      sha1.update(authChallenge);
+      sha1.update(new Buffer(username, "ascii"));
+      
+      return sha1.digest().slice(0, 8);
+    }
+
+    static ChallengeResponse(challenge: Buffer, passwordHash: Buffer): Buffer {
+      return MSCHAPv1.ChallengeResponse(challenge, passwordHash);
+    }
+
     /**
      * Generate an authenticator response for MS-CHAPv2.
      * 

@@ -43,13 +43,19 @@ describe("CHAP, MS-CHAPv1 and MS-CHAPv2 library for Node.js",() => {
 
   describe("MS-CHAPv2 methods",() => {
 
-    it("GenerateAuthenticatorResponse method",() => {
+    var username = "User";
+    var password = "clientPass";
+    var ntResponse = new Buffer("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF", "hex");
+    var peerChallenge = new Buffer("21402324255E262A28295F2B3A337C7E", "hex");
+    var authChallenge = new Buffer("5B5D7C7D7B3F2F3E3C2C602132262628", "hex");
 
-      var username = "User";
-      var password = "clientPass";
-      var ntResponse = new Buffer("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF", "hex");
-      var peerChallenge = new Buffer("21402324255E262A28295F2B3A337C7E", "hex");
-      var authChallenge = new Buffer("5B5D7C7D7B3F2F3E3C2C602132262628", "hex");
+    it("GenerateNTResponse method",() => {
+
+      assert.equal(chap.MSCHAPv2.GenerateNTResponse(authChallenge, peerChallenge, username, password).toString("base64"), ntResponse.toString("base64"));
+
+    });
+
+    it("GenerateAuthenticatorResponse method",() => {
 
       assert.equal(chap.MSCHAPv2.GenerateAuthenticatorResponse(password, ntResponse, peerChallenge, authChallenge, username), "S=407A5589115FD0D6209F510FE9C04566932CDA56");
 
