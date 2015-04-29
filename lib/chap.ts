@@ -8,7 +8,7 @@ module chap {
     // See http://tools.ietf.org/html/rfc1994#section-2 and https://tools.ietf.org/html/rfc2865#section-7.2
     static ChallengeResponse(id: Buffer, password: string, challenge: Buffer): Buffer {
       var md5 = crypto.createHash("md5");
-      md5.update(id.slice(0, 0)); // Take only the first octet as the CHAP ID.
+      md5.update(id.slice(0, 1)); // Take only the first octet as the CHAP ID.
       md5.update(password);
       md5.update(challenge);
       return md5.digest();
@@ -28,8 +28,8 @@ module chap {
 
       passwordBuffer.copy(finalPasswordBuffer);
 
-      var passwordHash1 = this.DesHash(passwordBuffer.slice(0, 6));
-      var passwordHash2 = this.DesHash(passwordBuffer.slice(7, 13));
+      var passwordHash1 = this.DesHash(passwordBuffer.slice(0, 7));
+      var passwordHash2 = this.DesHash(passwordBuffer.slice(7, 14));
 
       var passwordHash = new Buffer(16);
       passwordHash1.copy(passwordHash, 0);
@@ -54,9 +54,9 @@ module chap {
       zPasswordHash.fill(0);
       passwordHash.copy(zPasswordHash);
 
-      var des1 = crypto.createCipher("des", zPasswordHash.slice(0, 6)); //   1st 7 octets of zPasswordHash as key.
-      var des2 = crypto.createCipher("des", zPasswordHash.slice(7, 13)); //  2nd 7 octets of zPasswordHash as key.
-      var des3 = crypto.createCipher("des", zPasswordHash.slice(14, 20)); // 3rd 7 octets of zPasswordHash as key.
+      var des1 = crypto.createCipher("des", zPasswordHash.slice(0, 7)); //   1st 7 octets of zPasswordHash as key.
+      var des2 = crypto.createCipher("des", zPasswordHash.slice(7, 14)); //  2nd 7 octets of zPasswordHash as key.
+      var des3 = crypto.createCipher("des", zPasswordHash.slice(14, 21)); // 3rd 7 octets of zPasswordHash as key.
 
       var res1 = des1.update(challenge);
       var res2 = des2.update(challenge);
@@ -131,7 +131,7 @@ module chap {
       sha1.update(peer_challenge);
       sha1.update(authenticator_challenge);
       sha1.update(username, "ascii");
-      var challenge = sha1.digest().slice(0, 7); // Return the first 8 bytes from the SHA1 digest.
+      var challenge = sha1.digest().slice(0, 8); // Return the first 8 bytes from the SHA1 digest.
 
       sha1 = crypto.createHash("sha1");
       sha1.update(passwordDigest);
