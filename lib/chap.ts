@@ -39,10 +39,10 @@ module chap {
     }
 
     static NtChallengeResponse(challenge: Buffer, password: Password): Buffer {
-      var passwordBuffer: Buffer = new Buffer(<Buffer>password);
+      var passwordBuffer: Buffer = new Buffer(<string>password, "utf16le");
       
       var md4 = crypto.createHash("md4");
-      md4.update(password, "utf8");
+      md4.update(passwordBuffer);
 
       var passwordHash = md4.digest();
 
@@ -131,7 +131,7 @@ module chap {
         0x6E]);
 
       var md4 = crypto.createHash("md4");
-      md4.update(password, "utf8");
+      md4.update(password, "utf16le");
       var passwordHash = md4.digest();
 
       md4 = crypto.createHash("md4");
