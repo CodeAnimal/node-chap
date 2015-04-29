@@ -115,15 +115,15 @@ module chap {
     static ChallengeHash(peerChallenge: Buffer, authChallenge: Buffer, username: string): Buffer {
       var sha1 = crypto.createHash("sha1");
 
-      sha1.update(peerChallenge);
-      sha1.update(authChallenge);
+      sha1.update(peerChallenge.slice(0, 16));
+      sha1.update(authChallenge.slice(0, 16));
       sha1.update(new Buffer(username, "ascii"));
       
       return sha1.digest().slice(0, 8);
     }
 
     static ChallengeResponse(challenge: Buffer, passwordHash: Buffer): Buffer {
-      return MSCHAPv1.ChallengeResponse(challenge, passwordHash);
+      return MSCHAPv1.ChallengeResponse(challenge.slice(0, 8), passwordHash.slice(0, 16));
     }
 
     /**
@@ -139,7 +139,8 @@ module chap {
     static GenerateAuthenticatorResponse(password: string, NT_response: Buffer, peer_challenge: Buffer, authenticator_challenge: Buffer, username: string): string {
       password = password || "";
       username = username || "";
-      if (NT_response.length !== 24 || peer_challenge.length !== 16 || authenticator_challenge.length !== 16) return null;
+
+      if (NT_response.length < 24 || peer_challenge.length < 16 || authenticator_challenge.length < 16) return null;
 
       var Magic1 = new Buffer(
         [0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
@@ -163,14 +164,14 @@ module chap {
 
       var sha1 = crypto.createHash("sha1");
       sha1.update(passwordHashHash);
-      sha1.update(NT_response);
+      sha1.update(NT_response.slice(0, 24));
       sha1.update(Magic1);
       var passwordDigest = sha1.digest();
 
 
       sha1 = crypto.createHash("sha1");
-      sha1.update(peer_challenge);
-      sha1.update(authenticator_challenge);
+      sha1.update(peer_challenge.slice(0, 16));
+      sha1.update(authenticator_challenge.slice(0, 16));
       sha1.update(username, "ascii");
       var challenge = sha1.digest().slice(0, 8); // Return the first 8 bytes from the SHA1 digest.
 
