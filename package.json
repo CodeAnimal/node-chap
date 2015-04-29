@@ -1,6 +1,6 @@
 {
   "name": "chap",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Basic CHAP, MS-CHAP and MS-CHAPv2 authentication methods.",
   "main": "./lib/chap",
   "scripts": {
