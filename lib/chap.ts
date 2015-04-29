@@ -54,17 +54,9 @@ module chap {
       zPasswordHash.fill(0);
       passwordHash.copy(zPasswordHash);
 
-      var des1 = crypto.createCipher("des", zPasswordHash.slice(0, 7)); //   1st 7 octets of zPasswordHash as key.
-      var des2 = crypto.createCipher("des", zPasswordHash.slice(7, 14)); //  2nd 7 octets of zPasswordHash as key.
-      var des3 = crypto.createCipher("des", zPasswordHash.slice(14, 21)); // 3rd 7 octets of zPasswordHash as key.
-
-      var res1 = des1.update(challenge);
-      var res2 = des2.update(challenge);
-      var res3 = des3.update(challenge);
-
-      res1 = Buffer.concat([res1, des1.final()]);
-      res2 = Buffer.concat([res2, des2.final()]);
-      res3 = Buffer.concat([res3, des3.final()]);
+      var res1 = this.DesEncrypt(challenge, this._ParityKey(zPasswordHash.slice(0, 7))); //   1st 7 octets of zPasswordHash as key.
+      var res2 = this.DesEncrypt(challenge, this._ParityKey(zPasswordHash.slice(7, 14))); //  2nd 7 octets of zPasswordHash as key.
+      var res3 = this.DesEncrypt(challenge, this._ParityKey(zPasswordHash.slice(14, 21))); // 3rd 7 octets of zPasswordHash as key.
 
       var resBuffer = new Buffer(24);
 
@@ -76,9 +68,35 @@ module chap {
     }
 
     private static DesHash(clear: Buffer): Buffer {
-      var des = crypto.createCipher("des", clear);
-      var retBuf = des.update("KGS!@#$%");
-      return Buffer.concat([retBuf, des.final()]);
+      return this.DesEncrypt(clear, new Buffer("KGS!@#$ %"));
+    }
+
+    static DesEncrypt(clear: Buffer, key: Buffer): Buffer {
+      var iv = new Buffer(8);
+      iv.fill(0);
+
+      var des = crypto.createCipheriv("des", this._ParityKey(key), iv);
+      des.setAutoPadding(false);
+
+      return Buffer.concat([des.update(clear), des.final()]);
+    }
+
+    private static _ParityKey(key: Buffer): Buffer {
+      var parityKey = new Buffer(8);
+      var next: number = 0;
+      var working: number = 0;
+
+      for (var i = 0; i < 7; i++) {
+        working = key[i];
+
+        parityKey[i] = (working >> i) | next | 1;
+
+        next = working << (7 - i);
+      }
+
+      parityKey[i] = next | 1;
+
+      return parityKey;
     }
   }
 
