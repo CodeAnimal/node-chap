@@ -1,7 +1,7 @@
 {
   "name": "chap",
-  "version": "0.2.1",
-  "description": "Basic CHAP, MS-CHAP and MS-CHAPv2 authentication methods.",
+  "version": "0.3.0",
+  "description": "Basic CHAP, MS-CHAP and MS-CHAPv2 authentication and MPPE methods.",
   "main": "./lib/chap",
   "devDependencies": {
     "mocha": "~2.2.4"

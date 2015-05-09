@@ -4,9 +4,9 @@ import crypto = require("crypto");
 module chap {
   export type Password = string|Buffer;
 
-  export class CHAP {
+  export module CHAP {
     // See http://tools.ietf.org/html/rfc1994#section-2 and https://tools.ietf.org/html/rfc2865#section-7.2
-    static ChallengeResponse(id: Buffer, password: string, challenge: Buffer): Buffer {
+    export function ChallengeResponse(id: Buffer, password: string, challenge: Buffer): Buffer {
       var md5 = crypto.createHash("md5");
       md5.update(id.slice(0, 1)); // Take only the first octet as the CHAP ID.
       md5.update(password);
@@ -15,10 +15,10 @@ module chap {
     }
   }
 
-  export class MSCHAPv1 {
+  export module MSCHAPv1 {
     // See http://tools.ietf.org/html/rfc2433  -  Appendix A
 
-    static LmChallengeResponse(challenge: Buffer, password: string): Buffer {
+    export function LmPasswordHash(password: string): Buffer {
       var ucasePassword = password.toUpperCase();
 
       var passwordBuffer = new Buffer(ucasePassword); // This should be OEM, but maybe utf8/unicode will do?
@@ -27,35 +27,45 @@ module chap {
       finalPasswordBuffer.fill(0);
       passwordBuffer.copy(finalPasswordBuffer);
 
-      var passwordHash1 = this.DesHash(passwordBuffer.slice(0, 7));
-      var passwordHash2 = this.DesHash(passwordBuffer.slice(7, 14));
+      var passwordHash1 = DesHash(passwordBuffer.slice(0, 7));
+      var passwordHash2 = DesHash(passwordBuffer.slice(7, 14));
 
       var passwordHash = new Buffer(16);
       passwordHash1.copy(passwordHash, 0);
       passwordHash2.copy(passwordHash, 8);
 
-      return this.ChallengeResponse(challenge, passwordHash);
+      return passwordHash;
     }
 
-    static NtChallengeResponse(challenge: Buffer, password: Password): Buffer {
+    export function NtPasswordHash(password: Password): Buffer {
       var passwordBuffer: Buffer = new Buffer(<string>password, "utf16le");
-      
+
       var md4 = crypto.createHash("md4");
       md4.update(passwordBuffer);
 
-      var passwordHash = md4.digest();
-
-      return this.ChallengeResponse(challenge, passwordHash);
+      return md4.digest();
     }
 
-    static ChallengeResponse(challenge: Buffer, passwordHash: Buffer): Buffer {
+    export function LmChallengeResponse(challenge: Buffer, password: string): Buffer {
+      var passwordHash = LmPasswordHash(password);
+
+      return ChallengeResponse(challenge, passwordHash);
+    }
+
+    export function NtChallengeResponse(challenge: Buffer, password: Password): Buffer {
+      var passwordHash = NtPasswordHash(password);
+
+      return ChallengeResponse(challenge, passwordHash);
+    }
+
+    export function ChallengeResponse(challenge: Buffer, passwordHash: Buffer): Buffer {
       var zPasswordHash = new Buffer(21);
       zPasswordHash.fill(0);
       passwordHash.copy(zPasswordHash);
-
-      var res1 = this.DesEncrypt(challenge, zPasswordHash.slice(0, 7)); //   1st 7 octets of zPasswordHash as key.
-      var res2 = this.DesEncrypt(challenge, zPasswordHash.slice(7, 14)); //  2nd 7 octets of zPasswordHash as key.
-      var res3 = this.DesEncrypt(challenge, zPasswordHash.slice(14, 21)); // 3rd 7 octets of zPasswordHash as key.
+      
+      var res1 = DesEncrypt(challenge, zPasswordHash.slice(0, 7)); //   1st 7 octets of zPasswordHash as key.
+      var res2 = DesEncrypt(challenge, zPasswordHash.slice(7, 14)); //  2nd 7 octets of zPasswordHash as key.
+      var res3 = DesEncrypt(challenge, zPasswordHash.slice(14, 21)); // 3rd 7 octets of zPasswordHash as key.
 
       var resBuffer = new Buffer(24);
 
@@ -66,18 +76,18 @@ module chap {
       return resBuffer;
     }
 
-    private static DesHash(key: Buffer): Buffer {
-      return this.DesEncrypt(new Buffer("KGS!@#$%", "ascii"), key);
+    export function DesHash(key: Buffer): Buffer {
+      return DesEncrypt(new Buffer("KGS!@#$%", "ascii"), key);
     }
 
-    static DesEncrypt(clear: Buffer, key: Buffer): Buffer {
-      var des = crypto.createCipheriv("des-ecb", this._ParityKey(key), new Buffer(0));
+    export function DesEncrypt(clear: Buffer, key: Buffer): Buffer {
+      var des = crypto.createCipheriv("des-ecb", _ParityKey(key), new Buffer(0));
       des.setAutoPadding(false);
 
       return Buffer.concat([des.update(clear), des.final()]);
     }
 
-    private static _ParityKey(key: Buffer): Buffer {
+    function _ParityKey(key: Buffer): Buffer {
       var parityKey = new Buffer(8);
       var next: number = 0;
       var working: number = 0;
@@ -94,25 +104,115 @@ module chap {
 
       return parityKey;
     }
-  }
-
-  export class MSCHAPv2 {
-    // See http://tools.ietf.org/html/rfc2759#section-8.7
 
 
-    static GenerateNTResponse(authChallenge: Buffer, peerChallenge: Buffer, username: string, password: string): Buffer {
-      var passwordBuffer = new Buffer(password, "utf16le");
 
-      var challenge = this.ChallengeHash(peerChallenge, authChallenge, username);
+    //#region "MPPE methods"
 
-      var md4 = crypto.createHash("md4");
-      md4.update(passwordBuffer);
-      var passwordHash = md4.digest();
+    /***
+     * This is to generate a Session key for MPPE.
+     * 
+     * See: https://www.ietf.org/rfc/rfc3079.txt Section 2 (esp. 2.4) for use information.
+     * 
+     * @param initialSessionKey The initial key, derived from the LmPassword or the NtPassword (depending on 40, 56 or 128 bit key).
+     * @param currentSessionKey If this is for a new session, then the current key is the same as the initial key.
+     * @param lengthOfKey 8 for 40 and 56 bit keys, 16 for 128 bit keys.
+     */
+    export function GetKey(initialSessionKey: Buffer, currentSessionKey: Buffer, lengthOfKey: number): Buffer {
+      var SHApad1 = new Buffer(40);
+      var SHApad2 = new Buffer(40);
+      SHApad1.fill(0);
+      SHApad2.fill(0xf2);
 
-      return this.ChallengeResponse(challenge, passwordHash);
+      var sha1 = crypto.createHash("sha1");
+
+      sha1.update(initialSessionKey.slice(0, lengthOfKey));
+      sha1.update(SHApad1);
+      sha1.update(currentSessionKey.slice(0, lengthOfKey));
+      sha1.update(SHApad2);
+
+      return sha1.digest().slice(0, lengthOfKey);
     }
 
-    static ChallengeHash(peerChallenge: Buffer, authChallenge: Buffer, username: string): Buffer {
+    /**
+     * This is to generate an initial key for a 128-bit Session key for MPPE.
+     * 
+     * See: https://www.ietf.org/rfc/rfc3079.txt Section 2 (esp. 2.4) for use information.
+     */
+    export function GetStartKey(challenge: Buffer, ntPasswordHashHash: Buffer): Buffer {
+      var sha1 = crypto.createHash("sha1");
+
+      sha1.update(ntPasswordHashHash.slice(0, 16));
+      sha1.update(ntPasswordHashHash.slice(0, 16));
+      sha1.update(challenge.slice(0, 8));
+
+      return sha1.digest().slice(0, 16);
+    }
+
+
+    function _getKey_8(lmPassword: string, currentSessionKey?: Buffer): Buffer {
+      var lmPasswordHash = LmPasswordHash(lmPassword);
+
+      return GetKey(lmPasswordHash, currentSessionKey || lmPasswordHash, 8);
+    }
+
+    /**
+     * Generate a 40-bit session key, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 2.1
+     */
+    export function GetKey_40bit(lmPassword: string, currentSessionKey?: Buffer): Buffer {
+      var sessionKey = _getKey_8(lmPassword, currentSessionKey);
+
+      sessionKey[0] = 0xd1;
+      sessionKey[1] = 0x26;
+      sessionKey[2] = 0x9e;
+
+      return sessionKey;
+    }
+
+    /**
+     * Generate a 56-bit session key, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 2.2
+     */
+    export function GetKey_56bit(lmPassword: string, currentSessionKey?: Buffer): Buffer {
+      var sessionKey = _getKey_8(lmPassword, currentSessionKey);
+
+      sessionKey[0] = 0xd1;
+
+      return sessionKey;
+    }
+
+    /**
+     * Generate a 128-bit session key, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 2.3
+     */
+    export function GetKey_128bit(challenge: Buffer, ntPassword: string, currentSessionKey?: Buffer): Buffer {
+      var ntPasswordHash = NtPasswordHash(ntPassword);
+      var ntPasswordHashHash = NtPasswordHash(ntPasswordHash.slice(0, 16));
+
+      var initialSessionKey = GetStartKey(challenge, ntPasswordHashHash);
+
+      var sessionKey = GetKey(initialSessionKey, currentSessionKey || initialSessionKey, 16);
+
+      return sessionKey;
+    }
+
+    //#endregion
+  }
+
+  export module MSCHAPv2 {
+    // See http://tools.ietf.org/html/rfc2759#section-8.7
+
+    export function NtPasswordHash(password: Password): Buffer {
+      return MSCHAPv1.NtPasswordHash(password);
+    }
+
+    export function GenerateNTResponse(authChallenge: Buffer, peerChallenge: Buffer, username: string, password: Password): Buffer {
+      var challenge = MSCHAPv2.ChallengeHash(peerChallenge, authChallenge, username);
+
+      var passwordHash = MSCHAPv1.NtPasswordHash(password);
+
+      return MSCHAPv2.ChallengeResponse(challenge, passwordHash);
+    }
+
+    export function ChallengeHash(peerChallenge: Buffer, authChallenge: Buffer, username: string): Buffer {
       var sha1 = crypto.createHash("sha1");
 
       sha1.update(peerChallenge.slice(0, 16));
@@ -122,7 +222,7 @@ module chap {
       return sha1.digest().slice(0, 8);
     }
 
-    static ChallengeResponse(challenge: Buffer, passwordHash: Buffer): Buffer {
+    export function ChallengeResponse(challenge: Buffer, passwordHash: Buffer): Buffer {
       return MSCHAPv1.ChallengeResponse(challenge.slice(0, 8), passwordHash.slice(0, 16));
     }
 
@@ -136,7 +236,7 @@ module chap {
      * @param username                Username max length is 256 ASCII characters.
      * @returns {string}              The authenticator response as "S=" followed by 40 hexadecimal digits.
      */
-    static GenerateAuthenticatorResponse(password: string, NT_response: Buffer, peer_challenge: Buffer, authenticator_challenge: Buffer, username: string): string {
+    export function GenerateAuthenticatorResponse(password: string, NT_response: Buffer, peer_challenge: Buffer, authenticator_challenge: Buffer, username: string): string {
       password = password || "";
       username = username || "";
 
@@ -154,13 +254,9 @@ module chap {
         0x65, 0x20, 0x69, 0x74, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6F,
         0x6E]);
 
-      var md4 = crypto.createHash("md4");
-      md4.update(password, "utf16le");
-      var passwordHash = md4.digest();
+      var passwordHash = MSCHAPv1.NtPasswordHash(password);
 
-      md4 = crypto.createHash("md4");
-      md4.update(passwordHash);
-      var passwordHashHash = md4.digest();
+      var passwordHashHash = MSCHAPv1.NtPasswordHash(passwordHash);
 
       var sha1 = crypto.createHash("sha1");
       sha1.update(passwordHashHash);
@@ -184,6 +280,148 @@ module chap {
 
       return "S=" + authenticatorResponse.toUpperCase();
     }
+
+    
+    //#region "MPPE methods"
+
+    export function GetMasterKey(passwordHashHash: Buffer, NT_response: Buffer): Buffer {
+      var Magic1 = new Buffer
+        ([
+          0x54, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x74,
+          0x68, 0x65, 0x20, 0x4d, 0x50, 0x50, 0x45, 0x20, 0x4d,
+          0x61, 0x73, 0x74, 0x65, 0x72, 0x20, 0x4b, 0x65, 0x79
+        ]);
+
+      var sha = crypto.createHash("sha1");
+
+      sha.update(passwordHashHash.slice(0, 16));
+      sha.update(NT_response.slice(0, 24));
+      sha.update(Magic1);
+
+      return sha.digest().slice(0, 16);
+    }
+
+    export function GetAsymmetricStartKey(masterKey: Buffer, keyLength: number, isSend: boolean, isServer: boolean): Buffer {
+      var SHApad1 = new Buffer(40);
+      var SHApad2 = new Buffer(40);
+      SHApad1.fill(0);
+      SHApad2.fill(0xf2);
+
+      var Magic2 = new Buffer
+        ([
+          0x4f, 0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x63, 0x6c, 0x69,
+          0x65, 0x6e, 0x74, 0x20, 0x73, 0x69, 0x64, 0x65, 0x2c, 0x20,
+          0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x74, 0x68,
+          0x65, 0x20, 0x73, 0x65, 0x6e, 0x64, 0x20, 0x6b, 0x65, 0x79,
+          0x3b, 0x20, 0x6f, 0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x73,
+          0x65, 0x72, 0x76, 0x65, 0x72, 0x20, 0x73, 0x69, 0x64, 0x65,
+          0x2c, 0x20, 0x69, 0x74, 0x20, 0x69, 0x73, 0x20, 0x74, 0x68,
+          0x65, 0x20, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x20,
+          0x6b, 0x65, 0x79, 0x2e
+        ]);
+      var Magic3 = new Buffer
+        ([
+          0x4f, 0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x63, 0x6c, 0x69,
+          0x65, 0x6e, 0x74, 0x20, 0x73, 0x69, 0x64, 0x65, 0x2c, 0x20,
+          0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x74, 0x68,
+          0x65, 0x20, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x20,
+          0x6b, 0x65, 0x79, 0x3b, 0x20, 0x6f, 0x6e, 0x20, 0x74, 0x68,
+          0x65, 0x20, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x20, 0x73,
+          0x69, 0x64, 0x65, 0x2c, 0x20, 0x69, 0x74, 0x20, 0x69, 0x73,
+          0x20, 0x74, 0x68, 0x65, 0x20, 0x73, 0x65, 0x6e, 0x64, 0x20,
+          0x6b, 0x65, 0x79, 0x2e
+        ]);
+
+      var s = isSend == isServer ? Magic3 : Magic2;
+
+      var sha = crypto.createHash("sha1");
+      sha.update(masterKey.slice(0, 16));
+      sha.update(SHApad1);
+      sha.update(s);
+      sha.update(SHApad2);
+
+      return sha.digest().slice(0, keyLength);
+    }
+
+    export function GetNewKeyFromSHA(startKey: Buffer, sessionKey: Buffer, keyLength: number): Buffer {
+      var SHApad1 = new Buffer(40);
+      var SHApad2 = new Buffer(40);
+      SHApad1.fill(0);
+      SHApad2.fill(0xf2);
+
+      var sha1 = crypto.createHash("sha1");
+
+      sha1.update(startKey.slice(0, keyLength));
+      sha1.update(SHApad1);
+      sha1.update(sessionKey.slice(0, keyLength));
+      sha1.update(SHApad2);
+
+      return sha1.digest().slice(0, keyLength);
+    }
+
+
+
+
+    export interface SessionKeys {
+      SendSessionKey: Buffer;
+      RecvSessionKey: Buffer;
+    }
+
+    function _getSessionKeys(password: Password, NT_response: Buffer, keyLength: number, prevSessionKeys?: SessionKeys): SessionKeys {
+      var passwordHash = NtPasswordHash(password);
+      var passwordHashHash = NtPasswordHash(passwordHash.slice(0, 16));
+      
+      var masterKey = GetMasterKey(passwordHashHash, NT_response);
+
+      var masterSendKey = GetAsymmetricStartKey(masterKey, keyLength, true, true);
+      var masterRecvKey = GetAsymmetricStartKey(masterKey, keyLength, false, true);
+
+      var sessionKeys: SessionKeys = {
+        SendSessionKey: GetNewKeyFromSHA(masterSendKey, prevSessionKeys && prevSessionKeys.SendSessionKey ? prevSessionKeys.SendSessionKey : masterSendKey, keyLength),
+        RecvSessionKey: GetNewKeyFromSHA(masterRecvKey, prevSessionKeys && prevSessionKeys.RecvSessionKey ? prevSessionKeys.RecvSessionKey : masterRecvKey, keyLength),
+      };
+
+      return sessionKeys;
+    }
+
+    /**
+     * Generate a 40-bit send and receive session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.1
+     * 
+     * If prevSessionKey parameter is not given then it is assumed that the session has just started without a previous session key.
+     */
+    export function GetSessionKeys_40bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys): SessionKeys {
+      var sessionKeys = _getSessionKeys(password, NT_response, 8, prevSessionKeys);
+
+      sessionKeys.SendSessionKey[0] = sessionKeys.RecvSessionKey[0] = 0xd1;
+      sessionKeys.SendSessionKey[1] = sessionKeys.RecvSessionKey[1] = 0x26;
+      sessionKeys.SendSessionKey[2] = sessionKeys.RecvSessionKey[2] = 0x9e;
+
+      return sessionKeys;
+    }
+
+    /**
+     * Generate a 56-bit send and receive session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.2
+     * 
+     * If prevSessionKey parameter is not given then it is assumed that the session has just started without a previous session key.
+     */
+    export function GetSessionKeys_56bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys): SessionKeys {
+      var sessionKeys = _getSessionKeys(password, NT_response, 8, prevSessionKeys);
+
+      sessionKeys.SendSessionKey[0] = sessionKeys.RecvSessionKey[0] = 0xd1;
+
+      return sessionKeys;
+    }
+
+    /**
+     * Generate a 128-bit send and receive session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.3
+     * 
+     * If prevSessionKey parameter is not given then it is assumed that the session has just started without a previous session key.
+     */
+    export function GetSessionKeys_128bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys): SessionKeys {
+      return _getSessionKeys(password, NT_response, 16, prevSessionKeys);
+    }
+
+    //#endregion
   }
 }
 
