@@ -69,17 +69,13 @@ This will return a buffer contain the hash of the given NT Password/PasswordHash
 
 This will generate an authenticator response, returning a 42 character string, starting with "S=" followed by 40 hexadecimal characters, in upper case.
 
-#### GetSessionKeys_40bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys)
+#### GetSessionKeys_64bit(password: Password, NT_response: Buffer)
 
-Return a `SessionKeys` object with the 40-bit send/receive keys. If `prevSessionKeys` is not given, then it is assumed that it is a new session and will use the newly generated session keys as current.
+Return a `SessionKeys` object with the 40-bit/56-bit start send/receive keys.
 
-#### GetSessionKeys_56bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys)
+#### GetSessionKeys_128bit(password: Password, NT_response: Buffer)
 
-Return a `SessionKeys` object with the 56-bit send/receive keys. If `prevSessionKeys` is not given, then it is assumed that it is a new session and will use the newly generated session keys as current.
-
-#### GetSessionKeys_128bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys)
-
-Return a `SessionKeys` object with the 128-bit send/receive keys. If `prevSessionKeys` is not given, then it is assumed that it is a new session and will use the newly generated session keys as current.
+Return a `SessionKeys` object with the 128-bit start send/receive keys.
 
 #### SessionKeys
 

@@ -102,26 +102,19 @@ describe("CHAP, MS-CHAPv1 and MS-CHAPv2 library for Node.js", function () {
                 var masterKey = new Buffer("fdece3717a8c838cb388e527ae3cdd31", "hex");
                 assert.equal(chap.MSCHAPv2.GetAsymmetricStartKey(masterKey, 16, true, true).toString("hex"), "8b7cdc149b993a1ba118cb153f56dccb");
             });
-            it("40-bit Keys Derivation without current key", function () {
+            it("64-bit session keys (for use in 40-bit and 56-bit session keys)", function () {
                 var password = "clientPass";
                 var NT_response = new Buffer("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF", "hex");
-                var keys = chap.MSCHAPv2.GetSessionKeys_40bit(password, NT_response);
-                assert.equal(keys.SendSessionKey.toString("hex"), "d1269ec49fa62e3e");
-                assert.equal(keys.RecvSessionKey.toString("hex"), "d1269ed2ae999038");
+                var keys = chap.MSCHAPv2.GetSessionKeys_64bit(password, NT_response);
+                assert.equal(keys.SendSessionKey.toString("hex"), "8b7cdc149b993a1b");
+                assert.equal(keys.RecvSessionKey.toString("hex"), "d5f0e9521e3ea958");
             });
-            it("56-bit Keys Derivation without current key", function () {
-                var password = "clientPass";
-                var NT_response = new Buffer("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF", "hex");
-                var keys = chap.MSCHAPv2.GetSessionKeys_56bit(password, NT_response);
-                assert.equal(keys.SendSessionKey.toString("hex"), "d15c00c49fa62e3e");
-                assert.equal(keys.RecvSessionKey.toString("hex"), "d16a9bd2ae999038");
-            });
-            it("128-bit Keys Derivation without current key", function () {
+            it("128-bit session keys", function () {
                 var password = "clientPass";
                 var NT_response = new Buffer("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF", "hex");
                 var keys = chap.MSCHAPv2.GetSessionKeys_128bit(password, NT_response);
-                assert.equal(keys.SendSessionKey.toString("hex"), "405cb2247a7956e6e211007ae27b22d4");
-                assert.equal(keys.RecvSessionKey.toString("hex"), "49d11d0f0cc6befba2a9b4b688f91eee");
+                assert.equal(keys.SendSessionKey.toString("hex"), "8b7cdc149b993a1ba118cb153f56dccb");
+                assert.equal(keys.RecvSessionKey.toString("hex"), "d5f0e9521e3ea9589645e86051c82226");
             });
         });
     });

@@ -1,6 +1,6 @@
 {
   "name": "chap",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Basic CHAP, MS-CHAP and MS-CHAPv2 authentication and MPPE methods.",
   "main": "./lib/chap",
   "devDependencies": {
@@ -20,7 +20,8 @@
     "mschapv2",
     "ms-chapv2",
     "ms-chap2",
-    "mschap2"
+    "mschap2",
+    "mppe"
   ],
   "author": "Peter Harris <codeanimal@outlook.com>"
 }

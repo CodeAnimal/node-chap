@@ -367,7 +367,7 @@ module chap {
       RecvSessionKey: Buffer;
     }
 
-    function _getSessionKeys(password: Password, NT_response: Buffer, keyLength: number, prevSessionKeys?: SessionKeys): SessionKeys {
+    function _getSessionKeys(password: Password, NT_response: Buffer, keyLength: number): SessionKeys {
       var passwordHash = NtPasswordHash(password);
       var passwordHashHash = NtPasswordHash(passwordHash.slice(0, 16));
       
@@ -377,48 +377,31 @@ module chap {
       var masterRecvKey = GetAsymmetricStartKey(masterKey, keyLength, false, true);
 
       var sessionKeys: SessionKeys = {
-        SendSessionKey: GetNewKeyFromSHA(masterSendKey, prevSessionKeys && prevSessionKeys.SendSessionKey ? prevSessionKeys.SendSessionKey : masterSendKey, keyLength),
-        RecvSessionKey: GetNewKeyFromSHA(masterRecvKey, prevSessionKeys && prevSessionKeys.RecvSessionKey ? prevSessionKeys.RecvSessionKey : masterRecvKey, keyLength),
+        SendSessionKey: masterSendKey,
+        RecvSessionKey: masterRecvKey,
       };
 
       return sessionKeys;
     }
 
     /**
-     * Generate a 40-bit send and receive session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.1
+     * Generate 64-bit send and receive start session keys for use in 40-bit and 56-bit session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.2
      * 
      * If prevSessionKey parameter is not given then it is assumed that the session has just started without a previous session key.
      */
-    export function GetSessionKeys_40bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys): SessionKeys {
-      var sessionKeys = _getSessionKeys(password, NT_response, 8, prevSessionKeys);
-
-      sessionKeys.SendSessionKey[0] = sessionKeys.RecvSessionKey[0] = 0xd1;
-      sessionKeys.SendSessionKey[1] = sessionKeys.RecvSessionKey[1] = 0x26;
-      sessionKeys.SendSessionKey[2] = sessionKeys.RecvSessionKey[2] = 0x9e;
+    export function GetSessionKeys_64bit(password: Password, NT_response: Buffer): SessionKeys {
+      var sessionKeys = _getSessionKeys(password, NT_response, 8);
 
       return sessionKeys;
     }
 
     /**
-     * Generate a 56-bit send and receive session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.2
+     * Generate 128-bit send and receive start session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.3
      * 
      * If prevSessionKey parameter is not given then it is assumed that the session has just started without a previous session key.
      */
-    export function GetSessionKeys_56bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys): SessionKeys {
-      var sessionKeys = _getSessionKeys(password, NT_response, 8, prevSessionKeys);
-
-      sessionKeys.SendSessionKey[0] = sessionKeys.RecvSessionKey[0] = 0xd1;
-
-      return sessionKeys;
-    }
-
-    /**
-     * Generate a 128-bit send and receive session keys, as per the specs: https://www.ietf.org/rfc/rfc3079.txt Section 3.3
-     * 
-     * If prevSessionKey parameter is not given then it is assumed that the session has just started without a previous session key.
-     */
-    export function GetSessionKeys_128bit(password: Password, NT_response: Buffer, prevSessionKeys?: SessionKeys): SessionKeys {
-      return _getSessionKeys(password, NT_response, 16, prevSessionKeys);
+    export function GetSessionKeys_128bit(password: Password, NT_response: Buffer): SessionKeys {
+      return _getSessionKeys(password, NT_response, 16);
     }
 
     //#endregion
